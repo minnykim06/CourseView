@@ -1,0 +1,97 @@
+/* Basic resets and layout */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #eaeaea;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f8ff; /* Light background around the content */
+    border-radius: 5px;
+    box-shadow: 0 0 5px #ccc;
+  }
+  
+  /* Title styling */
+  .title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    background-color: #bfb1e0; /* Purplish background */
+    color: #333;
+    padding: 1rem;
+    border-radius: 5px;
+  }
+  
+  /* Control panel (dropdowns + search) */
+  .controls {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    margin: 0.5rem;
+  }
+  
+  .control-group label {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+  }
+  
+  .control-group select,
+  .control-group input {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  /* Courses grid */
+  .courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+  
+  .no-classes {
+    grid-column: 1 / -1;
+    font-size: 1.2rem;
+    color: #666;
+  }
+  
+  /* Footer or extra elements can go here */
+  
+  /* Make it look more like your mockup's color scheme */
+  body {
+    background: #d9d3ee; /* Light purple-ish background */
+  }
+  
+  .container {
+    background-color: #ffffff;
+    box-shadow: 0 0 8px #aaa;
+  }
+  
+  /* Add or modify inside App.css */
+
+
+  .courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .status {
+    text-align: center;
+    color: #666;
+    margin-top: 2rem;
+  }
+  
+  .status.error {
+    color: crimson;
+  }

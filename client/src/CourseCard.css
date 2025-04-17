@@ -1,0 +1,40 @@
+.card {
+    background-color: #F0F4FF;       /* Light, subtle background */
+    border: 1px solid #ccc;         /* Slight border */
+    border-radius: 8px;             /* Rounded corners */
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  }
+  
+  /* Course name (title) */
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    color: #333;
+  }
+  
+  /* Description and other text */
+  .card p {
+    margin: 0.5rem 0;
+    color: #555;
+  }
+  
+  /* “Learn more” button */
+  .card button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #bfb1e0;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #333;
+  }
+  
+  .card button:hover {
+    background-color: #af9bd7; /* Darken on hover */
+  }
+  
