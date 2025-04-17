@@ -1,8 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import './CourseCard.css';
 
 export default function CourseCard({ course }) {
   const {
+    id,
     code,
     name,
     subject,
@@ -11,6 +13,21 @@ export default function CourseCard({ course }) {
     prerequisites,
     difficulty,
   } = course;
+
+  // Create dots for difficulty rating
+  const renderDifficultyDots = () => {
+    const dots = [];
+    for (let i = 1; i <= 5; i++) {
+      dots.push(
+        <span 
+          key={i} 
+          className={`dot ${i <= difficulty ? 'filled' : ''}`} 
+          title={`${i}/5 difficulty`}
+        />
+      );
+    }
+    return dots;
+  };
 
   return (
     <div className="card">
@@ -38,13 +55,17 @@ export default function CourseCard({ course }) {
         </p>
       )}
 
-      {/* Difficulty rating */}
+      {/* Difficulty rating with visual indicator */}
       <p className="card-meta">
-        <strong>Difficulty:</strong> {difficulty}/5
+        <strong>Difficulty:</strong>
+        <span className="difficulty-rating">
+          {renderDifficultyDots()}
+          <span className="difficulty-text">{difficulty}/5</span>
+        </span>
       </p>
 
-      {/* Action button */}
-      <button className="card-button">Learn more</button>
+      {/* Action button linked to details page */}
+      <Link to={`/course/${id}`} className="card-button">Learn more</Link>
     </div>
   );
 }

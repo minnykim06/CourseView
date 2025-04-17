@@ -1,40 +1,132 @@
 .card {
-    background-color: #F0F4FF;       /* Light, subtle background */
-    border: 1px solid #ccc;         /* Slight border */
-    border-radius: 8px;             /* Rounded corners */
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    box-shadow: 0 0 4px rgba(0,0,0,0.2);
-  }
-  
-  /* Course name (title) */
-  .card h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    font-size: 1.2rem;
-    color: #333;
-  }
-  
-  /* Description and other text */
-  .card p {
-    margin: 0.5rem 0;
-    color: #555;
-  }
-  
-  /* “Learn more” button */
-  .card button {
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background-color: #bfb1e0;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    color: #333;
-  }
-  
-  .card button:hover {
-    background-color: #af9bd7; /* Darken on hover */
-  }
-  
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 480px; /* Set minimum height for all cards */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+  border-top: 4px solid #6246ea;
+  margin-bottom: 1.5rem; /* Extra margin at bottom */
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Course code and name */
+.card-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+  color: #333;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Course metadata */
+.card-meta {
+  margin: 1rem 0;
+  color: #555;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.card-meta strong {
+  min-width: 100px;
+  color: #444;
+  font-weight: 600;
+}
+
+/* Course descriptions */
+.card-description {
+  margin: 1.5rem 0;
+  margin-bottom: 1.5rem;
+  flex-grow: 1;
+  border-top: 1px solid #eaeaea;
+  border-bottom: 1px solid #eaeaea;
+  padding: 1.5rem 0;
+}
+
+.card-description strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #444;
+  font-weight: 600;
+}
+
+.card-description p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #666;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Limit to 3 lines for more consistent card heights */
+  -webkit-box-orient: vertical;
+  max-height: 4.5em; /* About 3 lines of text */
+}
+
+/* "Learn more" button */
+.card-button {
+  margin-top: 1.5rem;
+  padding: 0.7rem 1.2rem;
+  background-color: #6246ea;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease;
+  align-self: flex-end;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.card-button:hover {
+  background-color: #4a25aa;
+  color: white;
+  text-decoration: none;
+}
+
+/* Level indicators */
+.card-meta.level-indicator strong {
+  display: inline-block;
+}
+
+/* Difficulty rating display */
+.difficulty-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.difficulty-rating .dot {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  background-color: #e0e0e0;
+}
+
+.difficulty-rating .dot.filled {
+  background-color: #6246ea;
+}
+
+.difficulty-text {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  color: #666;
+}

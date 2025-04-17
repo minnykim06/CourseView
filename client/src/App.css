@@ -1,97 +1,140 @@
-/* Basic resets and layout */
+/* Modern UI styling with better colors and layout */
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #eaeaea;
-  }
-  
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+}
+
+.title-highlight{
+  color: #6246ea;
+
+}
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Title styling */
+.title {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  color: #4a25aa;
+  text-align: center;
+  font-weight: 700;
+  background: #7145e3;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  padding: 0.5rem 0;
+}
+
+.title-highlight {
+  opacity: 0.8;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Control panel (dropdowns + search) */
+.controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+  gap: 1.5rem;
+  background-color: #f9fafc;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.control-group label {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-group select,
+.control-group input {
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #e1e5ee;
+  background-color: white;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  color: #444;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.control-group select:focus,
+.control-group input:focus {
+  outline: none;
+  border-color: #6246ea;
+  box-shadow: 0 0 0 3px rgba(98, 70, 234, 0.2);
+}
+
+/* Courses grid */
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2.5rem;
+  row-gap: 4rem; /* Increase vertical spacing between cards */
+  margin-top: 2rem;
+  padding: 1rem;
+}
+
+.status {
+  text-align: center;
+  color: #666;
+  margin: 3rem 0;
+  font-size: 1.1rem;
+  padding: 2rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.status.error {
+  color: #e53935;
+  background-color: #ffebee;
+  border-left: 4px solid #e53935;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
   .container {
-    max-width: 1200px;
-    margin: 0 auto;
     padding: 20px;
-    text-align: center;
-    background-color: #f8f8ff; /* Light background around the content */
-    border-radius: 5px;
-    box-shadow: 0 0 5px #ccc;
+    margin: 10px;
   }
   
-  /* Title styling */
-  .title {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    background-color: #bfb1e0; /* Purplish background */
-    color: #333;
-    padding: 1rem;
-    border-radius: 5px;
-  }
-  
-  /* Control panel (dropdowns + search) */
   .controls {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    margin-bottom: 2rem;
-  }
-  
-  .control-group {
-    display: flex;
     flex-direction: column;
-    margin: 0.5rem;
-  }
-  
-  .control-group label {
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-  }
-  
-  .control-group select,
-  .control-group input {
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-  }
-  
-  /* Courses grid */
-  .courses-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    align-items: stretch;
     gap: 1rem;
   }
   
-  .no-classes {
-    grid-column: 1 / -1;
-    font-size: 1.2rem;
-    color: #666;
+  .control-group {
+    width: 100%;
   }
-  
-  /* Footer or extra elements can go here */
-  
-  /* Make it look more like your mockup's color scheme */
-  body {
-    background: #d9d3ee; /* Light purple-ish background */
-  }
-  
-  .container {
-    background-color: #ffffff;
-    box-shadow: 0 0 8px #aaa;
-  }
-  
-  /* Add or modify inside App.css */
-
-
-  .courses-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
-  }
-  
-  .status {
-    text-align: center;
-    color: #666;
-    margin-top: 2rem;
-  }
-  
-  .status.error {
-    color: crimson;
-  }
+}

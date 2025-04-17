@@ -1717,12 +1717,62 @@ const courses = [
 // RESTful Routes
 // ---------------------
 
+// In-memory storage for comments (would be a database in production)
+const comments = {};
+
 // GET all courses
 app.get('/api/courses', (req, res) => {
-  res.json(courses);
+  // The courses array is nested, so we need to flatten it
+  const flattenedCourses = courses.flat();
+  res.json(flattenedCourses);
 });
 
-// (You can add more routes as needed for your app.)
+// GET a specific course by ID
+app.get('/api/courses/:id', (req, res) => {
+  const courseId = parseInt(req.params.id);
+  const flattenedCourses = courses.flat();
+  const course = flattenedCourses.find(c => c.id === courseId);
+  
+  if (!course) {
+    return res.status(404).json({ error: 'Course not found' });
+  }
+  
+  res.json(course);
+});
+
+// GET comments for a specific course
+app.get('/api/courses/:id/comments', (req, res) => {
+  const courseId = parseInt(req.params.id);
+  const courseComments = comments[courseId] || [];
+  res.json(courseComments);
+});
+
+// POST a new comment for a course
+app.post('/api/courses/:id/comments', (req, res) => {
+  const courseId = parseInt(req.params.id);
+  const flattenedCourses = courses.flat();
+  const course = flattenedCourses.find(c => c.id === courseId);
+  
+  if (!course) {
+    return res.status(404).json({ error: 'Course not found' });
+  }
+  
+  const comment = {
+    id: Date.now(), // Using timestamp as ID for simplicity
+    courseId,
+    userName: req.body.userName,
+    text: req.body.text,
+    date: req.body.date || new Date().toISOString()
+  };
+  
+  // Initialize array if it doesn't exist
+  if (!comments[courseId]) {
+    comments[courseId] = [];
+  }
+  
+  comments[courseId].push(comment);
+  res.status(201).json(comment);
+});
 
 // ---------------------
 // Start the Server

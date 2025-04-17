@@ -1,33 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import CourseCard from './CourseCard';
-import './App.css';
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import CourseCard from "./CourseCard";
+import CourseDetail from "./CourseDetail";
+import "./App.css";
 
-function App() {
+// Home page component with course listings
+function CoursesList() {
   // State
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
-  const [subjectFilter, setSubjectFilter] = useState('All');
-  const [levelFilter, setLevelFilter] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState("All");
+  const [levelFilter, setLevelFilter] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Fetch all courses once
   useEffect(() => {
     setLoading(true);
-  
-    fetch('http://localhost:5001/api/courses')
-      .then(res => {
+
+    fetch("http://localhost:5001/api/courses")
+      .then((res) => {
         if (!res.ok) throw new Error(res.statusText);
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         setCourses(data);
         setFilteredCourses(data);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
-        setError('Failed to load courses');
+        setError("Failed to load courses");
       })
       .finally(() => {
         setLoading(false);
@@ -38,11 +46,11 @@ function App() {
   useEffect(() => {
     let temp = [...courses];
 
-    if (subjectFilter !== 'All') {
+    if (subjectFilter !== "All") {
       temp = temp.filter((c) => c.subject === subjectFilter);
     }
 
-    if (levelFilter !== 'All') {
+    if (levelFilter !== "All") {
       temp = temp.filter((c) => c.level === levelFilter);
     }
 
@@ -56,7 +64,12 @@ function App() {
 
   return (
     <div className="container">
-      <h1 className="title">CourseView @ PUSD</h1>
+      <h1 className="title">
+        CourseView @ PUSD
+      </h1>
+      <p className="subtitle">
+        Find and explore courses available at Pleasanton Unified School District
+      </p>
 
       <div className="controls">
         <div className="control-group">
@@ -66,20 +79,18 @@ function App() {
             onChange={(e) => setSubjectFilter(e.target.value)}
           >
             <option value="All">All</option>
-            <option value="Career and Technical Education">
-              Career and Technical Education
-            </option>
-            <option value="English">English</option>
-            <option value="Mathematics">Mathematics</option>
-            <option value="Physical Education">Physical Education</option>
-            <option value="Science">Science</option>
-            <option value="Social Science">Social Science</option>
-            <option value="Special Education">Special Education</option>
-            <option value="Visual and Performing Arts">
-              Visual and Performing Arts
-            </option>
-            <option value="World Languages">World Languages</option>
-            <option value="Additional Courses">Additional Courses</option>
+            <option value="Media And Entertainment">Media And Entertainment</option>
+            <option value="Child Development And Family Services">Child Development And Family Services</option>
+            <option value="Engineering And Architecture">Engineering And Architecture</option>
+            <option value="Health Services And Medical Technology">Health Services And Medical Technology</option>
+            <option value="Tourism And Recreation">Tourism And Recreation</option>
+            <option value="Sales And Service">Sales And Service</option>
+            <option value="Public Services">Public Services</option>
+            <option value="Transportation Technology">Transportation Technology</option>
+            <option value="Senior English Courses">Senior English Courses</option>
+            <option value="Other English Courses">Other English Courses</option>
+            <option value="Performing Arts">Performing Arts</option>
+            <option value="2024-2025">2024-2025</option>
           </select>
         </div>
 
@@ -90,9 +101,8 @@ function App() {
             onChange={(e) => setLevelFilter(e.target.value)}
           >
             <option value="All">All</option>
-            <option value="Regular">Regular</option>
-            <option value="Honors">Honors</option>
-            <option value="AP">AP</option>
+            <option value="P">Regular (P)</option>
+            <option value="HP">Honors (HP)</option>
           </select>
         </div>
 
@@ -110,8 +120,9 @@ function App() {
       {loading && <p className="status">Loading courses…</p>}
       {error && <p className="status error">{error}</p>}
 
-      {!loading && !error && (
-        filteredCourses.length === 0 ? (
+      {!loading &&
+        !error &&
+        (filteredCourses.length === 0 ? (
           <p className="status">No classes are shown</p>
         ) : (
           <div className="courses-grid">
@@ -119,9 +130,21 @@ function App() {
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
-        )
-      )}
+        ))}
     </div>
+  );
+}
+
+// Main App component with routing setup
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<CoursesList />} />
+        <Route path="/course/:courseId" element={<CourseDetail />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 
