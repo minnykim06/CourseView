@@ -3,8 +3,16 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
+const Chatbot = require("./chatbot.js");
 
 const app = express();
+
+//import chatbot from chatbot.js
+// const chattbot = require("./chatbot.js"); // Remove old incorrect import
+
+// Instantiate the Chatbot once
+const chatbot = new Chatbot();
+
 app.use(cors());
 app.use(express.json());
 
@@ -142,44 +150,91 @@ app.get("/api/courses/:id/comments", (req, res) => {
 });
 
 // POST a new comment for a course
-app.post("/api/courses/:id/comments", (req, res) => {
+// Make the handler async to use await
+app.post("/api/courses/:id/comments", async (req, res) => {
   const courseId = parseInt(req.params.id);
-  db.get("SELECT * FROM courses WHERE id = ?", [courseId], (err, row) => {
+  // chatbot = new chatbot(); // Remove instantiation from here
+
+  // First, check if course exists (moved this check up)
+  db.get("SELECT * FROM courses WHERE id = ?", [courseId], async (err, row) => {
+    // Make this callback async too
     if (err) {
-      res.status(500).json({ error: "Database error" });
-      return;
+      return res.status(500).json({ error: "Database error checking course" });
     }
     if (!row) {
       return res.status(404).json({ error: "Course not found" });
     }
 
-    const comment = {
-      id: Date.now(), // Using timestamp as ID for simplicity
-      courseId,
-      userName: req.body.userName,
-      text: req.body.text,
-      date: req.body.date || new Date().toISOString(),
-    };
+    // Basic validation for incoming data
+    const { userName, text } = req.body;
+    if (!userName || !text || typeof text !== "string" || text.trim() === "") {
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid userName or text" });
+    }
+    if (text.length > 500) {
+      return res
+        .status(400)
+        .json({ error: "Comment is too long (max 500 characters)" });
+    }
 
-    const stmt = db.prepare(
-      "INSERT INTO comments (id, courseId, userName, text, date) VALUES (?, ?, ?, ?, ?)"
-    );
-    stmt.run(
-      comment.id,
-      comment.courseId,
-      comment.userName,
-      comment.text,
-      comment.date,
-      (err) => {
-        if (err) {
-          res.status(500).json({ error: "Database error" });
-          return;
-        }
-        res.status(201).json(comment);
+    try {
+      // Call the asynchronous moderation function and wait for the result
+      const moderationResult = await chatbot.moderate(text);
+
+      if (moderationResult.decision === "block") {
+        console.log(
+          `Comment blocked: "${text}". Reason: ${moderationResult.reason}`
+        );
+        // Return a user-friendly message, maybe not always the raw reason
+        return res.status(403).json({
+          error: moderationResult.reason,
+          // reason: moderationResult.reason // Optionally include reason, maybe only for specific block types
+        });
       }
-    );
-    stmt.finalize();
-  });
+
+      // If allowed, proceed to insert
+      console.log(`Comment allowed: "${text}"`);
+      const comment = {
+        id: Date.now(), // Using timestamp as ID
+        courseId,
+        userName: userName, // Use validated userName
+        text: text, // Use validated text
+        date: new Date().toISOString(), // Use server time
+      };
+
+      const stmt = db.prepare(
+        "INSERT INTO comments (id, courseId, userName, text, date) VALUES (?, ?, ?, ?, ?)"
+      );
+
+      // Use a Promise wrapper for db operations for cleaner async/await
+      await new Promise((resolve, reject) => {
+        stmt.run(
+          comment.id,
+          comment.courseId,
+          comment.userName,
+          comment.text,
+          comment.date,
+          (runErr) => {
+            stmt.finalize(); // Finalize statement regardless of error
+            if (runErr) {
+              console.error("Database insert error:", runErr);
+              return reject(new Error("Database error inserting comment"));
+            }
+            resolve();
+          }
+        );
+      });
+
+      res.status(201).json(comment); // Send back the created comment
+    } catch (moderationOrDbError) {
+      // Catch errors from moderation or DB insertion
+      console.error("Error processing comment:", moderationOrDbError);
+      res.status(500).json({
+        error: "An internal error occurred while processing your comment.",
+      });
+    }
+  }); // End of db.get callback
 });
 
 // ---------------------
