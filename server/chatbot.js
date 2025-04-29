@@ -15,19 +15,118 @@ const openaiClient = new OpenAI({
   apiKey: openaiApiKey,
 });
 
+// Define the tool structure for the OpenAI API
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "searchCourses",
+      description:
+        "Search the course database for specific topics, course names, subjects, or levels. Use the 'keyword' parameter for searching topics or names within course titles and descriptions.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword: {
+            type: "string",
+            description:
+              "A topic or keyword (like 'physics', 'art', 'programming') to search for within course names and descriptions. Use this if the user asks about a specific topic not listed as a formal subject category.",
+          },
+          subject: {
+            type: "string",
+            description:
+              "Filter courses by a specific formal subject category (e.g., 'Engineering And Architecture', 'Performing Arts').",
+          },
+          level: {
+            type: "string",
+            description: "Filter courses by level (e.g., P, HP).",
+          },
+        },
+        required: [], // Make parameters optional, model can decide which to use
+      },
+    },
+  },
+];
+
 class Chatbot {
-  constructor() {
-    // Use the globally initialized openaiClient
+  constructor(db) {
+    // Accept db connection
+    if (!db) {
+      console.error("FATAL: Chatbot requires a database connection.");
+      process.exit(1);
+    }
+    this.db = db; // Store the db connection
     this.client = openaiClient;
-    this.conversationHistory = []; // Stores chat history { role: 'user' | 'assistant', content: string }[]
-    console.log("Chatbot class initialized using OpenAI v4+ SDK.");
+    this.conversationHistory = []; // Stores { role: 'user' | 'assistant' | 'tool', content: string, tool_call_id?: string, name?: string }[]
+    console.log(
+      "[Chatbot] Initialized using OpenAI v4+ SDK with DB connection."
+    );
   }
 
   /**
-   * Sends a message to the OpenAI API and returns the response, managing conversation history.
+   * Searches the course database.
+   * @param {object} params - Search parameters.
+   * @param {string} [params.keyword] - Keyword to search in name/description.
+   * @param {string} [params.subject] - Subject to filter by.
+   * @param {string} [params.level] - Level to filter by.
+   * @returns {Promise<object[]>} - Array of matching course objects.
+   */
+  async searchCourses({ keyword, subject, level } = {}) {
+    return new Promise((resolve, reject) => {
+      let query =
+        "SELECT id, code, name, subject, level, description FROM courses WHERE 1=1";
+      const queryParams = [];
+
+      if (keyword) {
+        query += " AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)";
+        const keywordLike = `%${keyword.toLowerCase()}%`;
+        queryParams.push(keywordLike, keywordLike);
+      }
+      if (subject) {
+        query += " AND LOWER(subject) = ?";
+        queryParams.push(subject.toLowerCase());
+      }
+      if (level) {
+        query += " AND LOWER(level) = ?";
+        queryParams.push(level.toLowerCase());
+      }
+
+      query += " LIMIT 10"; // Limit results to avoid overwhelming the model/user
+
+      console.log(
+        `[DB Query] Executing: ${query} with params: ${JSON.stringify(
+          queryParams
+        )}`
+      );
+
+      this.db.all(query, queryParams, (err, rows) => {
+        if (err) {
+          console.error("[DB Query] Error:", err);
+          reject(new Error("Failed to search courses."));
+        } else {
+          console.log(
+            `[DB Query] Found ${rows.length} courses matching criteria.`
+          );
+          // Format results slightly for better readability if needed
+          const results = rows.map((row) => ({
+            name: row.name,
+            code: row.code,
+            subject: row.subject,
+            level: row.level,
+            description: row.description
+              ? row.description.substring(0, 100) + "..."
+              : "No description", // Truncate description
+          }));
+          resolve(results);
+        }
+      });
+    });
+  }
+
+  /**
+   * Sends a message to the OpenAI API, handling potential tool calls.
    * @param {string} userMessage - The message from the user.
-   * @param {string} [systemPrompt="You are a helpful assistant."] - An optional system prompt.
-   * @returns {Promise<string>} - The chatbot's response message or an error message.
+   * @param {string} [systemPrompt="..."] - System prompt.
+   * @returns {Promise<string>} - The chatbot's final response message.
    */
   async sendMessage(
     userMessage,
@@ -38,57 +137,144 @@ class Chatbot {
       typeof userMessage !== "string" ||
       userMessage.trim() === ""
     ) {
-      console.warn("sendMessage called with empty or invalid message.");
+      console.warn(
+        "[Chatbot] sendMessage called with empty or invalid message."
+      );
       return "Please provide a valid message.";
     }
+    console.log(`[Chatbot] Received user message: "${userMessage}"`);
 
-    this.conversationHistory.push({ role: "user", content: userMessage });
+    // --- Manage Conversation History (Simplified) ---
+    // In a real app, history should be tied to a user session.
+    // For now, we append to the single history array.
+    const currentMessages = [...this.conversationHistory]; // Copy history for this turn
+    currentMessages.push({ role: "user", content: userMessage });
 
-    const messages = [];
-    // Add system prompt if it's the first message OR if a specific one was provided for this call
-    // Consider if the system prompt should *always* be the first message regardless of history.
-    if (
-      this.conversationHistory.length === 1 ||
-      (systemPrompt && systemPrompt !== "You are a helpful assistant.")
-    ) {
-      messages.push({ role: "system", content: systemPrompt });
+    // Add system prompt if needed (only for the *very first* message potentially)
+    if (this.conversationHistory.length === 0) {
+      currentMessages.unshift({ role: "system", content: systemPrompt });
     }
-
-    // Add the conversation history (including the latest user message)
-    messages.push(...this.conversationHistory);
+    // -----------------------------------------------
 
     try {
-      // Use the modern chat completion method
-      const completion = await this.client.chat.completions.create({
-        model: "gpt-4o", // Or specify another model like gpt-4o
-        messages: messages,
+      console.log(
+        "[Chatbot] Sending message to OpenAI with potential tools..."
+      );
+      let response = await this.client.chat.completions.create({
+        model: "gpt-4o",
+        messages: currentMessages,
+        tools: tools, // Provide the tool definition
+        tool_choice: "auto", // Let the model decide whether to use tools
       });
 
-      // Validate the response structure
-      const botMessage = completion.choices?.[0]?.message;
-      if (botMessage?.content) {
-        // Add the bot's response (which includes the role) to the history
-        this.conversationHistory.push(botMessage);
-        return botMessage.content;
-      } else {
-        console.error(
-          "sendMessage: Invalid response structure from OpenAI API:",
-          completion
+      let responseMessage = response.choices[0].message;
+
+      // --- Tool Call Handling ---
+      while (responseMessage.tool_calls) {
+        console.log(
+          "[Tool Call] OpenAI requested tool call(s):",
+          JSON.stringify(responseMessage.tool_calls)
         );
-        // Remove the user message that failed
-        this.conversationHistory.pop();
-        return "Sorry, I received an unexpected response from the chatbot.";
+        currentMessages.push(responseMessage);
+
+        // --- Execute Tool Calls (Simplified: handles first tool call only) ---
+        const availableTools = {
+          searchCourses: this.searchCourses.bind(this), // Bind `this` context
+        };
+
+        const toolCall = responseMessage.tool_calls[0];
+        const functionName = toolCall.function.name;
+        const functionToCall = availableTools[functionName];
+
+        let toolResultContent;
+        if (functionToCall) {
+          try {
+            const functionArgs = JSON.parse(toolCall.function.arguments);
+            console.log(
+              `[Tool Call] Executing tool '${functionName}' with args:`,
+              functionArgs
+            );
+            const toolResult = await functionToCall(functionArgs);
+            toolResultContent = JSON.stringify(toolResult);
+            console.log(
+              `[Tool Call] Tool '${functionName}' executed successfully. Result preview:`,
+              toolResultContent.substring(0, 200) +
+                (toolResultContent.length > 200 ? "..." : "")
+            );
+          } catch (toolError) {
+            console.error(
+              `[Tool Call] Error executing tool '${functionName}':`,
+              toolError
+            );
+            toolResultContent = JSON.stringify({
+              error: `Failed to execute tool ${functionName}.`,
+            });
+          }
+        } else {
+          console.warn(`[Tool Call] Unknown tool called: ${functionName}`);
+          toolResultContent = JSON.stringify({
+            error: `Unknown tool: ${functionName}`,
+          });
+        }
+        // --- End Tool Execution ---
+
+        // Add the tool's response to the history for the *next* call
+        currentMessages.push({
+          tool_call_id: toolCall.id,
+          role: "tool",
+          name: functionName,
+          content: toolResultContent,
+        });
+
+        // Make *another* API call with the tool result included
+        console.log("[Chatbot] Sending tool results back to OpenAI...");
+        response = await this.client.chat.completions.create({
+          model: "gpt-4o",
+          messages: currentMessages,
+          tools: tools,
+          tool_choice: "auto",
+        });
+        responseMessage = response.choices[0].message;
+      }
+      // --- End Tool Call Handling ---
+
+      // --- Process Final Response ---
+      if (responseMessage.content) {
+        console.log(
+          `[Chatbot] OpenAI provided final text response: "${responseMessage.content.substring(
+            0,
+            100
+          )}..."`
+        );
+        // Update the persistent conversation history
+        this.conversationHistory.push({ role: "user", content: userMessage }); // Add the initial user message
+        this.conversationHistory.push(responseMessage); // Add the final assistant response
+        // Note: Tool call/result messages are *not* added to the main history here,
+        // only the initial user message and the final assistant text response.
+        // The `currentMessages` array handled the temporary context for the multi-turn tool call.
+        return responseMessage.content;
+      } else {
+        // Check if it was a tool call loop that didn't result in content
+        if (response.choices[0].finish_reason === "tool_calls") {
+          console.error(
+            "[Chatbot] Error: Tool call loop did not produce a final text response."
+          );
+          return "Sorry, I got stuck trying to use my tools. Could you try phrasing your request differently?";
+        } else {
+          console.error(
+            "[Chatbot] sendMessage: Invalid response structure (no content):",
+            response
+          );
+          return "Sorry, I couldn't process that request properly.";
+        }
       }
     } catch (error) {
-      console.error("sendMessage: Error sending message to OpenAI:", error);
-      // Remove the user message that failed
-      if (
-        this.conversationHistory[this.conversationHistory.length - 1]?.role ===
-        "user"
-      ) {
-        this.conversationHistory.pop();
-      }
-      return "Sorry, there was an error communicating with the chatbot. Please try again later.";
+      console.error(
+        "[Chatbot] sendMessage: Error during OpenAI API call or tool execution:",
+        error
+      );
+      // Don't add the failed turn to history
+      return "Sorry, there was an error communicating with the chatbot or executing its tools. Please try again later.";
     }
   }
 
@@ -115,6 +301,7 @@ Block feedback that:
 - Contains vague words ('idk', 'meh', 'lol', 'okay')
 - Uses only emojis or slang
 - Is random, irrelevant, or not informative
+- Talks about academic dishonesty or cheating
 
 Respond ONLY with a valid JSON object adhering to this schema:
 {
@@ -130,6 +317,12 @@ Do not include any text outside the JSON object.`;
 
     try {
       // Use modern chat completion with JSON mode enabled
+      console.log(
+        `[Moderation] Sending comment for moderation: "${comment.substring(
+          0,
+          50
+        )}..."`
+      );
       const completion = await this.client.chat.completions.create({
         model: "gpt-4o", // gpt-4o is good for following JSON instructions
         messages: messages,
@@ -139,7 +332,7 @@ Do not include any text outside the JSON object.`;
       const responseContent = completion.choices?.[0]?.message?.content;
       if (!responseContent) {
         console.error(
-          "moderate: Empty response content from OpenAI API",
+          "[Moderation] Empty response content from OpenAI API:",
           completion
         );
         return {
@@ -155,12 +348,12 @@ Do not include any text outside the JSON object.`;
           decisionJson.decision?.toLowerCase() === "allow" ? "allow" : "block";
         const reason = decisionJson.reason || "No reason provided.";
 
-        console.log(`Moderation Decision: ${decision}, Reason: ${reason}`); // Log details
+        console.log(`[Moderation] Decision: ${decision}, Reason: ${reason}`);
         return { decision, reason };
       } catch (parseError) {
         // This should ideally not happen with response_format: { type: "json_object" }
         console.error(
-          `moderate: Failed to parse JSON response: ${responseContent}`,
+          `[Moderation] Failed to parse JSON response: ${responseContent}`,
           parseError
         );
         return {
@@ -169,7 +362,7 @@ Do not include any text outside the JSON object.`;
         };
       }
     } catch (error) {
-      console.error("moderate: Error during OpenAI API call:", error);
+      console.error("[Moderation] Error during OpenAI API call:", error);
       return {
         decision: "block",
         reason: "Error communicating with moderation service.",
@@ -182,7 +375,7 @@ Do not include any text outside the JSON object.`;
    */
   clearHistory() {
     this.conversationHistory = [];
-    console.log("Conversation history cleared.");
+    console.log("[Chatbot] Conversation history cleared.");
   }
 }
 

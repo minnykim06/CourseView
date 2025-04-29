@@ -11,7 +11,7 @@ const app = express();
 // const chattbot = require("./chatbot.js"); // Remove old incorrect import
 
 // Instantiate the Chatbot once
-const chatbot = new Chatbot();
+let chatbot; // Define chatbot variable
 
 app.use(cors());
 app.use(express.json());
@@ -21,31 +21,35 @@ const dbPath = path.join(__dirname, "database.sqlite");
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error("Error opening database", err);
+    process.exit(1); // Exit if DB connection fails
   } else {
     console.log("Connected to SQLite database");
+    // Instantiate the Chatbot *after* the DB is connected
+    chatbot = new Chatbot(db);
+
     //TODO: DELETE THIS - BAD PRACTICE
     db.serialize(() => {
       // Commented code is database initialization - it can be deleted now that I have the db created
 
-      // db.run(`CREATE TABLE IF NOT EXISTS courses (
-      //   id INTEGER PRIMARY KEY,
-      //   code TEXT,
-      //   name TEXT,
-      //   subject TEXT,
-      //   level TEXT,
-      //   description TEXT,
-      //   prerequisites TEXT,
-      //   difficulty INTEGER
-      // )`);
+      db.run(`CREATE TABLE IF NOT EXISTS courses (
+        id INTEGER PRIMARY KEY,
+        code TEXT,
+        name TEXT,
+        subject TEXT,
+        level TEXT,
+        description TEXT,
+        prerequisites TEXT,
+        difficulty INTEGER
+      )`);
 
-      // db.run(`CREATE TABLE IF NOT EXISTS comments (
-      //   id INTEGER PRIMARY KEY,
-      //   courseId INTEGER,
-      //   userName TEXT,
-      //   text TEXT,
-      //   date TEXT,
-      //   FOREIGN KEY (courseId) REFERENCES courses(id)
-      // )`);
+      db.run(`CREATE TABLE IF NOT EXISTS comments (
+        id INTEGER PRIMARY KEY,
+        courseId INTEGER,
+        userName TEXT,
+        text TEXT,
+        date TEXT,
+        FOREIGN KEY (courseId) REFERENCES courses(id)
+      )`);
       // @minsung, this is a local database made mostly just for testing purposes.
       // If you want to use this in a production environment, you should use supabase or some other db platform
 
@@ -235,6 +239,46 @@ app.post("/api/courses/:id/comments", async (req, res) => {
       });
     }
   }); // End of db.get callback
+});
+
+// ---------------------
+// Chatbot Endpoint
+// ---------------------
+
+// POST a message to the chatbot
+app.post("/api/chat", async (req, res) => {
+  const { message } = req.body;
+
+  if (!message || typeof message !== "string" || message.trim() === "") {
+    return res.status(400).json({ error: "Message cannot be empty." });
+  }
+
+  try {
+    // For now, each request creates a new conversation context.
+    // We could enhance this with session management later.
+    // Using the single chatbot instance created at the start.
+    // Note: The current Chatbot class stores history *within the instance*.
+    // If multiple users hit this endpoint concurrently, their histories might mix
+    // unless the Chatbot class or this endpoint logic is adapted.
+    // For simplicity now, we'll let the chatbot handle its internal state,
+    // but a better approach for multi-user would be needed.
+
+    // We'll use a specific system prompt for this endpoint.
+    const systemPrompt =
+      "You are a helpful and friendly course counselor chatbot for the Pleasanton Unified School District. Your goal is to assist students in finding suitable courses based on their interests, goals, and academic level. Provide concise and relevant information about courses, prerequisites, and potential pathways. When searching for specific topics mentioned by the user (e.g., 'physics', 'history', 'animation'), use the `searchCourses` tool with the `keyword` parameter to search within course names and descriptions. Use the `subject` parameter only when filtering by formal subject categories like 'Engineering And Architecture' or 'Performing Arts'.";
+
+    // Send the message using the chatbot instance
+    const botResponse = await chatbot.sendMessage(message, systemPrompt);
+
+    // Assuming sendMessage returns the string response or throws an error
+    res.json({ response: botResponse });
+  } catch (error) {
+    console.error("Error processing chat message:", error);
+    // Send a generic error message to the client
+    res
+      .status(500)
+      .json({ error: "Sorry, I encountered an error trying to respond." });
+  }
 });
 
 // ---------------------

@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import CourseCard from "./CourseCard";
 import CourseDetail from "./CourseDetail";
+import ChatbotWidget from "./ChatbotWidget";
 import "./App.css";
 
 // Home page component with course listings
@@ -64,9 +65,7 @@ function CoursesList() {
 
   return (
     <div className="container">
-      <h1 className="title">
-        CourseView @ PUSD
-      </h1>
+      <h1 className="title">CourseView @ PUSD</h1>
       <p className="subtitle">
         Find and explore courses available at Pleasanton Unified School District
       </p>
@@ -79,18 +78,31 @@ function CoursesList() {
             onChange={(e) => setSubjectFilter(e.target.value)}
           >
             <option value="All">All</option>
-            <option value="Media And Entertainment">Media And Entertainment</option>
-            <option value="Child Development And Family Services">Child Development And Family Services</option>
-            <option value="Engineering And Architecture">Engineering And Architecture</option>
-            <option value="Health Services And Medical Technology">Health Services And Medical Technology</option>
-            <option value="Tourism And Recreation">Tourism And Recreation</option>
+            <option value="Media And Entertainment">
+              Media And Entertainment
+            </option>
+            <option value="Child Development And Family Services">
+              Child Development And Family Services
+            </option>
+            <option value="Engineering And Architecture">
+              Engineering And Architecture
+            </option>
+            <option value="Health Services And Medical Technology">
+              Health Services And Medical Technology
+            </option>
+            <option value="Tourism And Recreation">
+              Tourism And Recreation
+            </option>
             <option value="Sales And Service">Sales And Service</option>
             <option value="Public Services">Public Services</option>
-            <option value="Transportation Technology">Transportation Technology</option>
-            <option value="Senior English Courses">Senior English Courses</option>
+            <option value="Transportation Technology">
+              Transportation Technology
+            </option>
+            <option value="Senior English Courses">
+              Senior English Courses
+            </option>
             <option value="Other English Courses">Other English Courses</option>
             <option value="Performing Arts">Performing Arts</option>
-            <option value="2024-2025">2024-2025</option>
           </select>
         </div>
 
@@ -139,11 +151,14 @@ function CoursesList() {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<CoursesList />} />
-        <Route path="/course/:courseId" element={<CourseDetail />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="app-container">
+        <Routes>
+          <Route path="/" element={<CoursesList />} />
+          <Route path="/course/:courseId" element={<CourseDetail />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <ChatbotWidget />
+      </div>
     </Router>
   );
 }

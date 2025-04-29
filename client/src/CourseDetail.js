@@ -160,13 +160,13 @@ export default function CourseDetail() {
                 <h3>Level</h3>
                 <p>{course.level}</p>
               </div>
-              <div className="info-item">
+              {/* <div className="info-item">
                 <h3>Difficulty</h3>
                 <div className="difficulty-rating">
                   {renderDifficultyDots(course.difficulty)}
                   <span className="difficulty-text">{course.difficulty}/5</span>
                 </div>
-              </div>
+              </div> */}
               {course.prerequisites && course.prerequisites.trim() !== "" && (
                 <div className="info-item prerequisites">
                   <h3>Prerequisites</h3>
