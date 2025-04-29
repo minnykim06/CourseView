@@ -10,6 +10,7 @@ export default function CourseDetail() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [userName, setUserName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch course details
   useEffect(() => {
@@ -66,6 +67,8 @@ export default function CourseDetail() {
       return;
     }
 
+    setIsSubmitting(true);
+
     // Optimistically create comment object, but don't add to state yet
     const commentPayload = {
       // No ID needed, server generates it
@@ -109,6 +112,9 @@ export default function CourseDetail() {
           err.message ||
           "Sorry, there was an error posting your comment.";
         alert(`Comment not posted: ${errorMessage}`);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
   };
 
@@ -205,10 +211,15 @@ export default function CourseDetail() {
                   placeholder="Share your experience with this course..."
                   rows="4"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
-              <button type="submit" className="submit-button">
-                Post Comment
+              <button
+                type="submit"
+                className={`submit-button ${isSubmitting ? "loading" : ""}`}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Post Comment"}
               </button>
             </form>
           </div>
