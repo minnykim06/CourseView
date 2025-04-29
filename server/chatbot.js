@@ -22,26 +22,26 @@ const tools = [
     function: {
       name: "searchCourses",
       description:
-        "Search the course database for specific topics, course names, subjects, or levels. Use the 'keyword' parameter for searching topics or names within course titles and descriptions.",
+        "Searches the course database. IMPORTANT: Use the 'keyword' parameter to search for general topics (like 'math', 'art', 'history', 'physics', 'computer science') within course names/descriptions. ONLY use the 'subject' parameter if the user explicitly asks to filter by one of the exact, valid subject categories.",
       parameters: {
         type: "object",
         properties: {
           keyword: {
             type: "string",
             description:
-              "A topic or keyword (like 'physics', 'art', 'programming') to search for within course names and descriptions. Use this if the user asks about a specific topic not listed as a formal subject category.",
+              "A topic or term (e.g., 'physics', 'calculus', 'animation', 'video game') to search within course names and descriptions. Use this for most topic-based searches.",
           },
           subject: {
             type: "string",
             description:
-              "Filter courses by a specific formal subject category (e.g., 'Engineering And Architecture', 'Performing Arts').",
+              "Filter courses ONLY by these exact subject categories: '2024-2025', 'Child Development And Family Services', 'Engineering And Architecture', 'Health Services And Medical Technology', 'Media And Entertainment', 'Other English Courses', 'Performing Arts', 'Public Services', 'Sales And Service', 'Senior English Courses', 'Tourism And Recreation', 'Transportation Technology'. Do not use for general topics like 'math' or 'science'.",
           },
           level: {
             type: "string",
-            description: "Filter courses by level (e.g., P, HP).",
+            description: "Filter courses by level (P or HP).",
           },
         },
-        required: [], // Make parameters optional, model can decide which to use
+        required: [],
       },
     },
   },
@@ -57,8 +57,28 @@ class Chatbot {
     this.db = db; // Store the db connection
     this.client = openaiClient;
     this.conversationHistory = []; // Stores { role: 'user' | 'assistant' | 'tool', content: string, tool_call_id?: string, name?: string }[]
+
+    // Define the system prompt for the chat functionality
+    this.systemPrompt = `You are CourseView AI, a friendly and knowledgeable course scheduling assistant for students at a high school in Pleasanton, CA. Your goal is to help students explore course options and find classes that fit their interests and academic path.
+
+You have access to a tool called \`searchCourses\` to look up courses in the school's database.
+
+Reasoning Process:
+1.  **Understand the Request:** Carefully analyze the student's message to understand their needs, interests, and any specific constraints (like prerequisites, desired subjects, levels, or keywords).
+2.  **Plan Tool Use:** If the student asks about specific courses, subjects, or general topics, plan to use the \`searchCourses\` tool.
+3.  **Formulate Tool Query:**
+    *   Use the \`keyword\` parameter for general topics (e.g., 'biology', 'programming', 'art history', 'creative writing'). Search broadly within course names and descriptions.
+    *   Use the \`subject\` parameter ONLY if the student explicitly mentions one of the exact, predefined subject categories (like 'Engineering And Architecture', 'Performing Arts', 'Health Services And Medical Technology'). Do NOT use \`subject\` for general topics like 'math' or 'science'.
+    *   Use the \`level\` parameter ('P' or 'HP') if the student specifies a desired level.
+    *   Briefly explain *why* you are searching with specific parameters before making the call (e.g., "Okay, I'll search for courses with the keyword 'physics' to find relevant options.").
+4.  **Synthesize Results:** Once you receive the search results from the tool, do not just list them raw. Synthesize the information clearly. Highlight 1-3 relevant courses, summarize their descriptions briefly, and mention their codes or levels if pertinent. Explain *why* these courses match the student's request based on the tool results.
+5.  **Ask Clarifying Questions:** If the request is ambiguous or needs more detail (e.g., "What kind of science?"), ask clarifying questions before using the tool.
+6.  **Handle Off-Topic Questions:** If the question is unrelated to course selection or the school's offerings, politely decline to answer and redirect the conversation back to course scheduling.
+
+Maintain a helpful, encouraging, and clear communication style.`;
+
     console.log(
-      "[Chatbot] Initialized using OpenAI v4+ SDK with DB connection."
+      "[Chatbot] Initialized using OpenAI v4+ SDK with DB connection and system prompt."
     );
   }
 
@@ -125,13 +145,9 @@ class Chatbot {
   /**
    * Sends a message to the OpenAI API, handling potential tool calls.
    * @param {string} userMessage - The message from the user.
-   * @param {string} [systemPrompt="..."] - System prompt.
    * @returns {Promise<string>} - The chatbot's final response message.
    */
-  async sendMessage(
-    userMessage,
-    systemPrompt = "You are a helpful assistant."
-  ) {
+  async sendMessage(userMessage) {
     if (
       !userMessage ||
       typeof userMessage !== "string" ||
@@ -144,6 +160,9 @@ class Chatbot {
     }
     console.log(`[Chatbot] Received user message: "${userMessage}"`);
 
+    // Use the system prompt defined in the constructor
+    const baseSystemPrompt = this.systemPrompt;
+
     // --- Manage Conversation History (Simplified) ---
     // In a real app, history should be tied to a user session.
     // For now, we append to the single history array.
@@ -152,7 +171,8 @@ class Chatbot {
 
     // Add system prompt if needed (only for the *very first* message potentially)
     if (this.conversationHistory.length === 0) {
-      currentMessages.unshift({ role: "system", content: systemPrompt });
+      // Use the prompt from the constructor
+      currentMessages.unshift({ role: "system", content: baseSystemPrompt });
     }
     // -----------------------------------------------
 
@@ -175,59 +195,72 @@ class Chatbot {
           "[Tool Call] OpenAI requested tool call(s):",
           JSON.stringify(responseMessage.tool_calls)
         );
+        // Add the assistant's request to use tools to the history for the next call
         currentMessages.push(responseMessage);
 
-        // --- Execute Tool Calls (Simplified: handles first tool call only) ---
         const availableTools = {
-          searchCourses: this.searchCourses.bind(this), // Bind `this` context
+          searchCourses: this.searchCourses.bind(this),
         };
 
-        const toolCall = responseMessage.tool_calls[0];
-        const functionName = toolCall.function.name;
-        const functionToCall = availableTools[functionName];
+        // Array to hold the results of all tool calls in this turn
+        const toolResults = [];
 
-        let toolResultContent;
-        if (functionToCall) {
-          try {
-            const functionArgs = JSON.parse(toolCall.function.arguments);
-            console.log(
-              `[Tool Call] Executing tool '${functionName}' with args:`,
-              functionArgs
-            );
-            const toolResult = await functionToCall(functionArgs);
-            toolResultContent = JSON.stringify(toolResult);
-            console.log(
-              `[Tool Call] Tool '${functionName}' executed successfully. Result preview:`,
-              toolResultContent.substring(0, 200) +
-                (toolResultContent.length > 200 ? "..." : "")
-            );
-          } catch (toolError) {
-            console.error(
-              `[Tool Call] Error executing tool '${functionName}':`,
-              toolError
+        // Process all tool calls requested in parallel
+        for (const toolCall of responseMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionToCall = availableTools[functionName];
+          let toolResultContent;
+
+          console.log(
+            `[Tool Call] Processing tool call ID: ${toolCall.id}, Function: ${functionName}`
+          );
+
+          if (functionToCall) {
+            try {
+              const functionArgs = JSON.parse(toolCall.function.arguments);
+              console.log(
+                `[Tool Call] Executing tool '${functionName}' with args:`,
+                functionArgs
+              );
+              const toolResult = await functionToCall(functionArgs);
+              toolResultContent = JSON.stringify(toolResult);
+              console.log(
+                `[Tool Call] Tool '${functionName}' (ID: ${toolCall.id}) executed successfully. Result preview:`,
+                toolResultContent.substring(0, 200) +
+                  (toolResultContent.length > 200 ? "..." : "")
+              );
+            } catch (toolError) {
+              console.error(
+                `[Tool Call] Error executing tool '${functionName}' (ID: ${toolCall.id}):`,
+                toolError
+              );
+              toolResultContent = JSON.stringify({
+                error: `Failed to execute tool ${functionName}.`,
+              });
+            }
+          } else {
+            console.warn(
+              `[Tool Call] Unknown tool requested: ${functionName} (ID: ${toolCall.id})`
             );
             toolResultContent = JSON.stringify({
-              error: `Failed to execute tool ${functionName}.`,
+              error: `Unknown tool: ${functionName}`,
             });
           }
-        } else {
-          console.warn(`[Tool Call] Unknown tool called: ${functionName}`);
-          toolResultContent = JSON.stringify({
-            error: `Unknown tool: ${functionName}`,
+
+          // Add the result for this specific tool call
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: toolResultContent,
           });
         }
-        // --- End Tool Execution ---
 
-        // Add the tool's response to the history for the *next* call
-        currentMessages.push({
-          tool_call_id: toolCall.id,
-          role: "tool",
-          name: functionName,
-          content: toolResultContent,
-        });
+        // Add all tool results to the message history for the next API call
+        currentMessages.push(...toolResults);
 
-        // Make *another* API call with the tool result included
-        console.log("[Chatbot] Sending tool results back to OpenAI...");
+        // Make *another* API call with all tool results included
+        console.log("[Chatbot] Sending all tool results back to OpenAI...");
         response = await this.client.chat.completions.create({
           model: "gpt-4o",
           messages: currentMessages,
